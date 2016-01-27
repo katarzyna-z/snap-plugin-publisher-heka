@@ -1,0 +1,12 @@
+{
+	"ImportPath": "github.com/intelsdi-x/snap-plugin-publisher-heka",
+	"GoVersion": "go1.5",
+	"Deps": [
+		{
+			"ImportPath": "github.com/intelsdi-x/snap"
+		},
+		{
+			"ImportPath": "github.com/mozilla-services/heka"
+		}
+	]
+}
