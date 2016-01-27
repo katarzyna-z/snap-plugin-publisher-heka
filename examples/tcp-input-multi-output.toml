@@ -1,0 +1,59 @@
+[hekad]
+maxprocs = 2
+
+#TCP input
+[tcp_in:3242]
+type = "TcpInput"
+splitter = "HekaFramingSplitter"
+decoder = "ProtobufDecoder"
+address = ":3242"
+keep_alive = true
+
+# File output
+[tcp_heka_output_log]
+type = "FileOutput"
+message_matcher = "TRUE"
+path = "/tmp/output.log"
+perm = "664"
+encoder = "tcp_heka_output_encoder"
+
+[tcp_heka_output_encoder]
+type = "RstEncoder"
+append_newlines = false
+
+[RstEncoder]
+
+# Elasticsearch output
+[ESJsonEncoder]
+index = "intel-snap-%{%Y.%m.%d}"
+es_index_from_timestamp = true
+type_name = "%{Type}"
+    [ESJsonEncoder.field_mappings]
+    Timestamp = "@timestamp"
+    Severity = "level"
+
+[ElasticSearchOutput]
+message_matcher = "Type == 'snap.heka'"
+server = "http://127.0.0.1:9200"
+encoder = "ESJsonEncoder"
+flush_interval = 10 
+
+# InfluxDB output
+[InfluxdbLineEncoder]
+type = "SandboxEncoder"
+filename = "lua_encoders/schema_influx_line.lua"
+
+    [InfluxdbLineEncoder.config]
+    skip_fields = "Payload EnvVersion Pid Uuid Logger "
+    timestamp_precision= "s"
+
+[InfluxdbOutput]
+type = "HttpOutput"
+message_matcher = "Type == 'snap.heka'"
+encoder = "InfluxdbLineEncoder"
+address = "http://127.0.0.1:8086/write?db=mydb&rp=default&precision=s"
+username = "root"
+password = "root"
+
+
+
