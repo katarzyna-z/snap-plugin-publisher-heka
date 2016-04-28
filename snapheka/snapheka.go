@@ -23,8 +23,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"encoding/json"
-	"net/url"
 	"fmt"
+	"net/url"
 
 	log "github.com/Sirupsen/logrus"
 
@@ -98,7 +98,7 @@ func (p *hekaPublisher) Publish(contentType string, content []byte, config map[s
 	handleErr(err)
 
 	// Publish metric data to Heka through TCP
-	shc, _ := NewSnapHekaClient(fmt.Sprintf("tcp://%s",u))
+	shc, _ := NewSnapHekaClient(fmt.Sprintf("tcp://%s", u))
 	err = shc.sendToHeka(metrics)
 	handleErr(err)
 
