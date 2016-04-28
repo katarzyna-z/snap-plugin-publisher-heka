@@ -34,7 +34,6 @@ var (
 	PluginPath = path.Join(SnapPath, "plugin", PluginName)
 )
 
-
 func TestMain(t *testing.T) {
 	Convey("ensure plugin loads and responds", t, func() {
 		os.Args = []string{"", "{\"NoDaemon\": true}"}
