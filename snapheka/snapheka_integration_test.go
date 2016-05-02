@@ -1,6 +1,3 @@
-//
-// +build integration
-
 package snapheka
 
 import (
@@ -11,6 +8,7 @@ import (
 	"time"
 
 	"github.com/intelsdi-x/snap/control/plugin"
+	"github.com/intelsdi-x/snap/core"
 	"github.com/intelsdi-x/snap/core/ctypes"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -32,10 +30,13 @@ func TestHekaPublish(t *testing.T) {
 		cfg, _ := cp.Get([]string{""}).Process(config)
 
 		Convey("Publish float metrics to Heka", func() {
-			metrics := []plugin.PluginMetricType{
-				*plugin.NewPluginMetricType([]string{"/intel/psutil/load/load15"}, time.Now(), "mac1", nil, nil, 23.1),
-				*plugin.NewPluginMetricType([]string{"/intel/psutil/vm/available"}, time.Now().Add(2*time.Second), "mac2", nil, nil, 23.2),
-				*plugin.NewPluginMetricType([]string{"/intel/psutil/load/load1"}, time.Now().Add(3*time.Second), "linux3", nil, nil, 23.3),
+			metrics := []plugin.MetricType{
+				*plugin.NewMetricType(
+					core.NewNamespace("intel", "psutil", "load", "load15"), time.Now(), nil, nil, 23.1),
+				*plugin.NewMetricType(
+					core.NewNamespace("intel", "psutil", "vm", "available"), time.Now().Add(2*time.Second), nil, nil, 23.2),
+				*plugin.NewMetricType(
+					core.NewNamespace("intel", "psutil", "load", " load1"), time.Now().Add(3*time.Second), nil, nil, 23.3),
 			}
 			enc.Encode(metrics)
 
@@ -44,8 +45,9 @@ func TestHekaPublish(t *testing.T) {
 		})
 
 		Convey("Publish int metrics to Heka", func() {
-			metrics := []plugin.PluginMetricType{
-				*plugin.NewPluginMetricType([]string{"/intel/psutil/vm/free"}, time.Now().Add(5*time.Second), "linux7", nil, nil, 88),
+			metrics := []plugin.MetricType{
+				*plugin.NewMetricType(
+					core.NewNamespace("intel", "psutil", "vm", "free"), time.Now().Add(5*time.Second), nil, nil, 88),
 			}
 			enc.Encode(metrics)
 

@@ -8,7 +8,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"code.google.com/p/go-uuid/uuid"
+	"github.com/pborman/uuid"
 	"github.com/mozilla-services/heka/client"
 	"github.com/mozilla-services/heka/message"
 
@@ -48,7 +48,7 @@ func NewSnapHekaClient(addr string) (shc *SnapHekaClient, err error) {
 }
 
 // sendToHeka sends array of snap metrics to Heka
-func (shc *SnapHekaClient) sendToHeka(metrics []plugin.PluginMetricType) error {
+func (shc *SnapHekaClient) sendToHeka(metrics []plugin.MetricType) error {
 	pid := int32(os.Getpid())
 	hostname, _ := os.Hostname()
 
@@ -64,7 +64,7 @@ func (shc *SnapHekaClient) sendToHeka(metrics []plugin.PluginMetricType) error {
 
 	var buf []byte
 	for _, m := range metrics {
-		b, _, e := plugin.MarshalPluginMetricTypes(plugin.SnapJSONContentType, []plugin.PluginMetricType{m})
+		b, _, e := plugin.MarshalMetricTypes(plugin.SnapJSONContentType, []plugin.MetricType{m})
 		if e != nil {
 			logger.WithField("_block", "sendToHeka").Error("marshal metric error: %v", m)
 			continue
@@ -88,7 +88,7 @@ func (shc *SnapHekaClient) sendToHeka(metrics []plugin.PluginMetricType) error {
 }
 
 // snapToHekaPayload converts snap metric data into Heka message
-func snapToHekaPayload(pl string, m plugin.PluginMetricType, pid int32, hostname string) *message.Message {
+func snapToHekaPayload(pl string, m plugin.MetricType, pid int32, hostname string) *message.Message {
 	msg := &message.Message{}
 	msg.SetUuid(uuid.NewRandom())
 	msg.SetTimestamp(time.Now().UnixNano())
@@ -99,9 +99,14 @@ func snapToHekaPayload(pl string, m plugin.PluginMetricType, pid int32, hostname
 	msg.SetPid(pid)
 	msg.SetHostname(hostname)
 
-	addField("namespace", strings.Join(m.Namespace(), "."), msg)
+	hostname, ok := m.Tags()["hostname"]
+	if !ok {
+		hostname = "unknown_host"
+	}
+
+	addField("namespace", strings.Join(m.Namespace().Strings(), "."), msg)
 	addField("data", getData(m.Data()), msg)
-	addField("source", m.Source(), msg)
+	addField("source", hostname, msg)
 	addField("version", m.Version(), msg)
 	addField("timestamp", m.Timestamp().UnixNano(), msg)
 

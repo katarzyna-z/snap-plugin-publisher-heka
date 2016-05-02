@@ -35,7 +35,7 @@ import (
 
 const (
 	name       = "heka"
-	version    = 1
+	version    = 2
 	pluginType = plugin.PublisherPluginType
 )
 
@@ -74,7 +74,7 @@ func (p *hekaPublisher) GetConfigPolicy() (*cpolicy.ConfigPolicy, error) {
 // Publish publishes metric data to heka.
 func (p *hekaPublisher) Publish(contentType string, content []byte, config map[string]ctypes.ConfigValue) error {
 	logger := log.New()
-	var metrics []plugin.PluginMetricType
+	var metrics []plugin.MetricType
 
 	switch contentType {
 	case plugin.SnapGOBContentType:
