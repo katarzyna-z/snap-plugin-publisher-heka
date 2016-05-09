@@ -66,7 +66,7 @@ func (shc *SnapHekaClient) sendToHeka(metrics []plugin.MetricType) error {
 	for _, m := range metrics {
 		b, _, e := plugin.MarshalMetricTypes(plugin.SnapJSONContentType, []plugin.MetricType{m})
 		if e != nil {
-			logger.WithField("_block", "sendToHeka").Error("marshal metric error: %v", m)
+			logger.WithField("_block", "sendToHeka").Error("marshal metric error: ", m)
 			continue
 		}
 
