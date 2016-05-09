@@ -32,11 +32,11 @@ func TestHekaPublish(t *testing.T) {
 		Convey("Publish float metrics to Heka", func() {
 			metrics := []plugin.MetricType{
 				*plugin.NewMetricType(
-					core.NewNamespace("intel", "psutil", "load", "load15"), time.Now(), nil, nil, 23.1),
+					core.NewNamespace("intel", "psutil", "load", "load15"), time.Now(), nil, "", 23.1),
 				*plugin.NewMetricType(
-					core.NewNamespace("intel", "psutil", "vm", "available"), time.Now().Add(2*time.Second), nil, nil, 23.2),
+					core.NewNamespace("intel", "psutil", "vm", "available"), time.Now().Add(2*time.Second), nil, "", 23.2),
 				*plugin.NewMetricType(
-					core.NewNamespace("intel", "psutil", "load", " load1"), time.Now().Add(3*time.Second), nil, nil, 23.3),
+					core.NewNamespace("intel", "psutil", "load", " load1"), time.Now().Add(3*time.Second), nil, "", 23.3),
 			}
 			enc.Encode(metrics)
 
@@ -47,7 +47,7 @@ func TestHekaPublish(t *testing.T) {
 		Convey("Publish int metrics to Heka", func() {
 			metrics := []plugin.MetricType{
 				*plugin.NewMetricType(
-					core.NewNamespace("intel", "psutil", "vm", "free"), time.Now().Add(5*time.Second), nil, nil, 88),
+					core.NewNamespace("intel", "psutil", "vm", "free"), time.Now().Add(5*time.Second), nil, "", 88),
 			}
 			enc.Encode(metrics)
 
