@@ -8,9 +8,9 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/pborman/uuid"
 	"github.com/mozilla-services/heka/client"
 	"github.com/mozilla-services/heka/message"
+	"github.com/pborman/uuid"
 
 	"github.com/intelsdi-x/snap/control/plugin"
 )
