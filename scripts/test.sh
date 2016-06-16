@@ -36,8 +36,8 @@ if [[ $TEST_SUITE == "unit" ]]; then
         go get golang.org/x/tools/cmd/cover
 
         COVERALLS_TOKEN=t47LG6BQsfLwb9WxB56hXUezvwpED6D11
-        TEST_DIRS="main.go opentsdb/"
-        VET_DIRS=". ./opentsdb/..."
+        TEST_DIRS="main.go snapheka/"
+        VET_DIRS=". ./snapheka/..."
 
         set -e
 
