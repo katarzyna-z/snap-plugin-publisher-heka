@@ -143,7 +143,7 @@ func setHekaMessageFields(m plugin.MetricType, msg *message.Message) error {
 		if elt.IsDynamic() {
 			dimField, err = addToDimensions(dimField, elt.Name)
 			if err != nil {
-				logger.WithField("_block", "fillMetricNameTagsDimensions").Error(err)
+				logger.WithField("_block", "setHekaMessageFields").Error(err)
 				return err
 			}
 			addField(elt.Name, elt.Value, msg)
@@ -157,7 +157,7 @@ func setHekaMessageFields(m plugin.MetricType, msg *message.Message) error {
 		for tag, value := range m.Tags() {
 			dimField, err = addToDimensions(dimField, tag)
 			if err != nil {
-				logger.WithField("_block", "fillMetricNameTagsDimensions").Error(err)
+				logger.WithField("_block", "setHekaMessageFields").Error(err)
 				return err
 			}
 			addField(tag, value, msg)
