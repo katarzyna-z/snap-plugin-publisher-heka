@@ -1,12 +1,15 @@
 {
 	"ImportPath": "github.com/intelsdi-x/snap-plugin-publisher-heka",
-	"GoVersion": "go1.5",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v74",
 	"Deps": [
 		{
-			"ImportPath": "github.com/intelsdi-x/snap"
+			"ImportPath": "github.com/intelsdi-x/snap",
+			"Rev": "d29748b02c59ace82f0b93c4b200c43683a5b5d1"
 		},
 		{
-			"ImportPath": "github.com/mozilla-services/heka"
+			"ImportPath": "github.com/mozilla-services/heka",
+			"Rev": "e8799385d16915a80b69061d05542da6342e58e4"
 		}
 	]
 }
