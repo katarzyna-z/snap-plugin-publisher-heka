@@ -25,8 +25,32 @@ ROOTFS=$BUILDDIR/rootfs
 BUILDCMD='go build -a -ldflags "-w"'
 
 echo
-echo "****  snap Plugin Build  ****"
+echo "****  Prepare Heka  ****"
 echo
+OLDGOPATH=$GOPATH
+cd ../..
+GITHUBDIR=`pwd`
+mkdir -p mozilla-services
+cd mozilla-services
+if [ ! -d "heka" ] 
+then
+   git clone http://github.com/mozilla-services/heka
+fi
+
+echo
+echo "****  Source Heka ENV  ****"
+echo
+
+cd heka
+source ./build.sh
+
+# append old GOPATH to the current GOPATH
+export GOPATH=$GOPATH:$OLDGOPATH
+
+echo
+echo "****  snap Heka Plugin Build  ****"
+echo
+cd $SOURCEDIR
 
 # Disable CGO for builds
 export CGO_ENABLED=0
