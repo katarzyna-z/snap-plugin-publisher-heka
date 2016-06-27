@@ -26,7 +26,7 @@
                     "plugin_name": "heka",                            
                     "config": {
                         "host": "SNAP_HEKA_IP",
-                        "port": "TCP_PORT"
+                        "port": TCP_PORT
                     }
                 }
             ]                                            

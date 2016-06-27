@@ -1,6 +1,8 @@
 package snapheka
 
 import (
+	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -70,9 +72,13 @@ func (shc *SnapHekaClient) sendToHeka(metrics []plugin.MetricType) error {
 			continue
 		}
 
-		// Converts snap metrics to Heka message
-		payload := snapToHekaPayload(string(b), m, pid, hostname)
-		err = encoder.EncodeMessageStream(payload, &buf)
+		// Converts snap metric to Heka message
+		msg, err := createHekaMessage(string(b), m, pid, hostname)
+		if err != nil {
+			logger.WithField("_block", "sendToHeka").Error("create message error: ", err)
+			continue
+		}
+		err = encoder.EncodeMessageStream(msg, &buf)
 		if err != nil {
 			logger.WithField("_block", "sendToHeka").Error("encoding error: ", err)
 			continue
@@ -87,8 +93,8 @@ func (shc *SnapHekaClient) sendToHeka(metrics []plugin.MetricType) error {
 	return nil
 }
 
-// snapToHekaPayload converts snap metric data into Heka message
-func snapToHekaPayload(pl string, m plugin.MetricType, pid int32, hostname string) *message.Message {
+// createHekaMessage converts a Snap metric into an Heka message
+func createHekaMessage(pl string, m plugin.MetricType, pid int32, hostname string) (*message.Message, error) {
 	msg := &message.Message{}
 	msg.SetUuid(uuid.NewRandom())
 	msg.SetTimestamp(time.Now().UnixNano())
@@ -99,18 +105,71 @@ func snapToHekaPayload(pl string, m plugin.MetricType, pid int32, hostname strin
 	msg.SetPid(pid)
 	msg.SetHostname(hostname)
 
-	hostname, ok := m.Tags()["hostname"]
-	if !ok {
-		hostname = "unknown_host"
+	err := setHekaMessageFields(m, msg)
+	if err != nil {
+		errStr := fmt.Sprintf("Can not extract metric name, tags or dimensions")
+		log.Error(errStr)
+		return nil, errors.New(errStr)
 	}
+	return msg, nil
+}
 
-	addField("namespace", strings.Join(m.Namespace().Strings(), "."), msg)
-	addField("data", getData(m.Data()), msg)
-	addField("source", hostname, msg)
-	addField("version", m.Version(), msg)
+// Function used to add a specific dynamic metric namespace element
+// into the dimensions field of final Heka message structure
+func addToDimensions(f *message.Field, fName string) (*message.Field, error) {
+	// If the dimension field does not exists yet, create ti
+	if f == nil {
+		field, err := message.NewField("dimensions", fName, "")
+		if err != nil {
+			logger.WithField("_block", "addToDimensions").Error(err)
+			return nil, err
+		}
+		return field, nil
+	}
+	// Add field name to dimension field
+	f.AddValue(fName)
+	return f, nil
+}
+
+// function which fills all part of Heka message
+func setHekaMessageFields(m plugin.MetricType, msg *message.Message) error {
+	mName := make([]string, 0, len(m.Namespace()))
+	var dimField *message.Field
+	var err error
+	// Loop on namespace elements
+	for _, elt := range m.Namespace() {
+		// Dynamic element is not inserted in metric name
+		// but rather added to dimension field
+		if elt.IsDynamic() {
+			dimField, err = addToDimensions(dimField, elt.Name)
+			if err != nil {
+				logger.WithField("_block", "fillMetricNameTagsDimensions").Error(err)
+				return err
+			}
+			addField(elt.Name, elt.Value, msg)
+		} else {
+			// Static element is concatenated to metric name
+			mName = append(mName, elt.Value)
+		}
+	}
+	// Processing of tags
+	if len(m.Tags()) > 0 {
+		for tag, value := range m.Tags() {
+			dimField, err = addToDimensions(dimField, tag)
+			if err != nil {
+				logger.WithField("_block", "fillMetricNameTagsDimensions").Error(err)
+				return err
+			}
+			addField(tag, value, msg)
+		}
+	}
+	if dimField != nil {
+		msg.AddField(dimField)
+	}
+	addField("name", strings.Join(mName, "."), msg)
+	addField("value", getData(m.Data()), msg)
 	addField("timestamp", m.Timestamp().UnixNano(), msg)
-
-	return msg
+	return nil
 }
 
 // getData converts unit64 to int64 for Heka supported data type
