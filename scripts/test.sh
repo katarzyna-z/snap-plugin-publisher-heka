@@ -28,6 +28,32 @@
 # Capture what test we should run
 TEST_SUITE=$1
 
+__dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+__proj_dir="$(dirname "$__dir")"
+
+# shellcheck source=scripts/common.sh
+. "${__dir}/common.sh"
+
+mozilla_path=$(echo ${GOPATH//://src/github.com/mozilla-services:}/src/github.com/mozilla-services | cut -d':' -f1)
+heka_path="${mozilla_path}/heka"
+
+_debug "heka path: ${heka_path}"
+_info "ensure latest mozilla heka repo available"
+
+[[ -d ${heka_path} ]] || _fail "run 'make dep' and ensure mozilla/heka source exist in ${heka_path}"
+
+_info "building heka"
+# NOTE: heka buid scripts does not honor set -e and set -u
+set +e
+set +u
+(cd "${heka_path}" && source ./build.sh)
+set -e
+set -u
+
+# append Heka build to GOPATH
+export GOPATH="${heka_path}/build/heka:${GOPATH}"
+_debug "heka custom GOPATH: ${GOPATH}"
+
 if [[ $TEST_SUITE == "unit" ]]; then
         go get github.com/axw/gocov/gocov
         go get github.com/mattn/goveralls
@@ -98,12 +124,14 @@ if [[ $TEST_SUITE == "unit" ]]; then
         #     done
         # fi
 elif [[ $TEST_SUITE == "integration" ]]; then
-        sudo service docker restart; sleep 10
-        docker run --name heka -it -p 4352:4352 -p 3242:3242 -v ../examples/tcp-docker-test.toml:/etc/heka/config.toml mozilla/heka -config /etc/heka/config.toml
+        #sudo service docker restart; sleep 10
+        docker stop heka || >/dev/null 2>&1
+        docker rm heka || >/dev/null 2>&1
+        docker run --name heka -it -p 4352:4352 -p 3242:3242 -v ${__proj_dir}/examples/tcp-docker-test.toml:/etc/heka/config.toml mozilla/heka -config /etc/heka/config.toml
         ip=`docker inspect -f '{{ .NetworkSettings.IPAddress }}' heka`
-        while ! curl --silent -G "http://${ip}:4352" 2>&1 > /dev/null ; do
-                sleep 1
-                echo -n "."
-        done
+        # while ! curl --silent -G "http://${ip}:4352" 2>&1 > /dev/null ; do
+        #         sleep 1
+        #         echo -n "."
+        # done
         SNAP_HEKA_HOST=$ip go test -v --tags=integration ./...
 fi
