@@ -1,39 +1,31 @@
 sudo: required
-services:
-- docker
 language: go
 go:
 - 1.5.4
 - 1.6.2
-env:
-  global:
-    - SNAP_PLUGIN_SOURCE=/home/travis/gopath/src/github.com/intelsdi-x/snap-plugin-publisher-heka
-    - HEKA_SOURCE=/home/travis/gopath/src/github.com/mozilla-services/heka
-  matrix:
-    - TEST=unit
-    - TEST=integration
-# NOTE: addons required for Heka:
-addons:
-  apt:
-    packages:
-      - protobuf-compiler
-      - cmake
-      - libgeoip-dev
+services:
+- docker
 before_install:
 - go get github.com/tools/godep
 - if [ ! -d $SNAP_PLUGIN_SOURCE ]; then mkdir -p $HOME/gopath/src/github.com/intelsdi-x; ln -s $TRAVIS_BUILD_DIR $SNAP_PLUGIN_SOURCE; fi # CI for forks not from intelsdi-x
-- mkdir -p /home/travis/gopath/src/github.com/mozilla-services
-- cd /home/travis/gopath/src/github.com/mozilla-services
-- git clone http://github.com/mozilla-services/heka || true
+env:
+  global:
+    - SNAP_PLUGIN_SOURCE=/home/travis/gopath/src/github.com/intelsdi-x/snap-plugin-publisher-heka
+  matrix:
+    - TEST=unit
+    - TEST=integration
+addons:
+  apt:
+    packages:
+      - debhelper # required for trusty VM
+      - cmake
+      - libgeoip-dev
+      - protobuf-compiler
 install:
 - export TMPDIR=$HOME/tmp
 - mkdir -p $TMPDIR
-- cd $HEKA_SOURCE
-- source ./build.sh
 - cd $SNAP_PLUGIN_SOURCE # change dir into source
-- export GOPATH=$HEKA_SOURCE/build/heka:$GOPATH
-- make deps
-
+- make
 script:
 - make check TEST=$TEST 2>&1 # Run test suite
 notifications:

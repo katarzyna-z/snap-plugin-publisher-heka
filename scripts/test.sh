@@ -26,7 +26,10 @@
 # 6. test coverage (http://blog.golang.org/cover)
 
 # Capture what test we should run
-TEST_SUITE=$1
+TEST_TYPE="${TEST:-$1}"
+
+
+[[ "$TEST_TYPE" =~ ^(unit|integration)$ ]] || echo "invalid/missing TEST_TYPE (value must be 'unit' or 'integration' received:${TEST_TYPE}"
 
 __dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 __proj_dir="$(dirname "$__dir")"
@@ -37,24 +40,11 @@ __proj_dir="$(dirname "$__dir")"
 mozilla_path=$(echo ${GOPATH//://src/github.com/mozilla-services:}/src/github.com/mozilla-services | cut -d':' -f1)
 heka_path="${mozilla_path}/heka"
 
-_debug "heka path: ${heka_path}"
-_info "ensure latest mozilla heka repo available"
-
-[[ -d ${heka_path} ]] || _fail "run 'make dep' and ensure mozilla/heka source exist in ${heka_path}"
-
-_info "building heka"
-# NOTE: heka buid scripts does not honor set -e and set -u
-set +e
-set +u
-(cd "${heka_path}" && source ./build.sh)
-set -e
-set -u
-
 # append Heka build to GOPATH
 export GOPATH="${heka_path}/build/heka:${GOPATH}"
 _debug "heka custom GOPATH: ${GOPATH}"
 
-if [[ $TEST_SUITE == "unit" ]]; then
+if [[ $TEST_TYPE == "unit" ]]; then
         go get github.com/axw/gocov/gocov
         go get github.com/mattn/goveralls
         go get golang.org/x/tools/cmd/goimports
@@ -106,32 +96,28 @@ if [[ $TEST_SUITE == "unit" ]]; then
 
         go tool cover -func profile.cov
 
-        # Disabled Coveralls.io for now
-        # To submit the test coverage result to coveralls.io,
-        # use goveralls (https://github.com/mattn/goveralls)
-        # goveralls -coverprofile=profile.cov -service=travis-ci -repotoken t47LG6BQsfLwb9WxB56hXUezvwpED6D11
-        #
-        # If running inside Travis we update coveralls. We don't want his happening on Macs
-        # if [ "$TRAVIS" == "true" ]
-        # then
-        #     n=1
-        #     until [ $n -ge 6 ]
-        #     do
-        #         echo "posting to coveralls attempt $n of 5"
-        #         goveralls -v -coverprofile=profile.cov -service travis.ci -repotoken $COVERALLS_TOKEN && break
-        #         n=$[$n+1]
-        #         sleep 30
-        #     done
-        # fi
-elif [[ $TEST_SUITE == "integration" ]]; then
-        #sudo service docker restart; sleep 10
-        docker stop heka || >/dev/null 2>&1
-        docker rm heka || >/dev/null 2>&1
-        docker run --name heka -it -p 4352:4352 -p 3242:3242 -v ${__proj_dir}/examples/tcp-docker-test.toml:/etc/heka/config.toml mozilla/heka -config /etc/heka/config.toml
-        ip=`docker inspect -f '{{ .NetworkSettings.IPAddress }}' heka`
-        # while ! curl --silent -G "http://${ip}:4352" 2>&1 > /dev/null ; do
-        #         sleep 1
-        #         echo -n "."
-        # done
-        SNAP_HEKA_HOST=$ip go test -v --tags=integration ./...
+elif [[ $TEST_TYPE == "integration" ]]; then
+  docker images --format "{{.Repository}}" | grep "^mozilla/heka$" || (cd "${heka_path}/docker" && ./build_docker.sh)
+  _info "starting heka container"
+  heka_id=$(docker run -d -it -p 4352:4352 -p 3242:3242 -v "${__proj_dir}/examples/tcp-docker-test.toml":/etc/heka/config.toml mozilla/heka -config /etc/heka/config.toml)
+  _debug "container id: ${heka_id}"
+  _info "waiting for heka service"
+  set +e
+  set +u
+  DOCKER_HOST="${HOST:-}"
+  if [[ -z $DOCKER_HOST ]]; then
+        ip=$(docker inspect -f '{{ .NetworkSettings.IPAddress }}' "${heka_id}")
+  else
+        ip=`echo $DOCKER_HOST | grep -o '[0-9]\+[.][0-9]\+[.][0-9]\+[.][0-9]\+'`     
+  fi
+  set -e
+  while ! curl --silent -G "http://${ip}:4352" > /dev/null 2>&1 ; do
+    sleep 1
+    echo -n "."
+  done
+  _info "running integration tests"
+  SNAP_HEKA_HOST=$ip go test -v --tags=integration ./...
+  _info "cleanup heka container"
+  docker stop "${heka_id}"
+  docker rm "${heka_id}"
 fi

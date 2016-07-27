@@ -38,8 +38,7 @@ BUILDCMD='go build -a -ldflags "-w"'
 mozilla_path=$(echo ${GOPATH//://src/github.com/mozilla-services:}/src/github.com/mozilla-services | cut -d':' -f1)
 heka_path="${mozilla_path}/heka"
 
-_debug "heka path: ${heka_path}"
-_info "ensure latest mozilla heka repo available"
+_debug "heka build path: ${heka_path}"
 
 [[ -d ${heka_path} ]] || _fail "run 'make dep' and ensure mozilla/heka source exist in ${heka_path}"
 
