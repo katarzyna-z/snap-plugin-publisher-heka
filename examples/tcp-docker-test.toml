@@ -1,0 +1,23 @@
+[hekad]
+maxprocs = 1
+
+[tcp_in:3242]
+type = "TcpInput"
+splitter = "HekaFramingSplitter"
+decoder = "ProtobufDecoder"
+address = ":3242"
+keep_alive = true
+
+[tcp_heka_output_log]
+type = "FileOutput"
+message_matcher = "TRUE"
+path = "/tmp/output.log"
+perm = "664"
+encoder = "tcp_heka_output_encoder"
+
+[tcp_heka_output_encoder]
+type = "RstEncoder"
+append_newlines = false
+
+[DashboardOutput]
+ticker_interval = 10

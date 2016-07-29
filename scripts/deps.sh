@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #http://www.apache.org/licenses/LICENSE-2.0.txt
 #
 #
@@ -15,19 +17,20 @@
 #See the License for the specific language governing permissions and
 #limitations under the License.
 
-default:
-		$(MAKE) deps
-		$(MAKE) all
-deps:
-		bash -c "./scripts/deps.sh"
+set -e
+set -u
+set -o pipefail
 
-test:
-		bash -c "./scripts/test.sh $(TEST)"
-test-unit:
-		bash -c "./scripts/test.sh unit"
-test-integration:
-		bash -c "./scripts/test.sh integration"
-check:
-		$(MAKE) test
-all:
-		bash -c "./scripts/build.sh $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))"
+__dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+__proj_dir="$(dirname "$__dir")"
+
+# shellcheck source=scripts/common.sh
+. "${__dir}/common.sh"
+
+_go_path
+
+_go_get github.com/tools/godep
+
+_info "restoring dependency with godep"
+(cd "${__proj_dir}" && godep restore)
+

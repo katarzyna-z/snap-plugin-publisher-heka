@@ -49,27 +49,18 @@ All OSs currently supported by snap:
 ### Building from source
 * Get the package: 
 ```go get github.com/intelsdi-x/snap-plugin-publisher-heka```
-* Build heka 
- * Follow the [instructions](https://github.com/mozilla-services/heka/) on how to properly build heka.
- * Pay careful attention to the changes the build.sh script makes to your shell environment you will need them when building the snap heka plugin.
 * Build the snap-plugin-publisher-heka plugin
- 1. Ensure that the heka build path is on your GOPATH.
  *  From the root of the snap-plugin-publisher-heka path type ```make all```.
    * This builds the plugin in `/build/rootfs/`.
-
-### Docker Installation
-Follow the steps below to build the heka docker image.
-```
-$ git clone https://github.com/intelsdi-x/snap-plugin-publisher-heka.git
-$ cd heka/docker
-$ ./build_docker.sh
-```
-It generates a heka docker image that contains Heka source and build artifacts. The ENTRYPOINTS are set to hekad, all args passed to docker run will be CMD args for hekad.
 
 ### Configuration and Usage
 * Set up the [snap framework](https://github.com/intelsdi-x/snap/blob/master/README.md#getting-started)
 * Ensure `$SNAP_PATH` is exported
 `export SNAP_PATH=$GOPATH/src/github.com/intelsdi-x/snap/build`
+* Make sure the Docker is ready on your machine before you run integration tests.
+ * cd snap-plugin-publisher-heka
+  * make test-unit 
+  * make test-integration
 
 ## Documentation
 
