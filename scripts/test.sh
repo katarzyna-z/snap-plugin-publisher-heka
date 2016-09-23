@@ -26,7 +26,7 @@
 # 6. test coverage (http://blog.golang.org/cover)
 
 # Capture what test we should run
-TEST_TYPE="${TEST:-$1}"
+TEST_TYPE="${TEST_TYPE:-$1}"
 
 
 [[ "$TEST_TYPE" =~ ^(unit|integration)$ ]] || echo "invalid/missing TEST_TYPE (value must be 'unit' or 'integration' received:${TEST_TYPE}"

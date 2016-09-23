@@ -1,15 +1,19 @@
 package snapheka
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 
+	"github.com/ghodss/yaml"
 	"github.com/mozilla-services/heka/client"
 	"github.com/mozilla-services/heka/message"
 	"github.com/pborman/uuid"
@@ -18,12 +22,17 @@ import (
 )
 
 const (
-	SnapHekaMsgType   = "snap.heka"
-	SnapHekaMsgLogger = "snap.heka.logger"
+	SnapDfltHekaSeverity  = 6
+	SnapDfltHekaMsgType   = "snap.heka"
+	SnapDfltHekaMsgLogger = "snap.heka.logger"
 )
 
 var (
-	logger = log.WithField("_module", "_snap_heka")
+	logger                              = log.WithField("_module", "_snap_heka")
+	SnapHekaSeverity  int32             = SnapDfltHekaSeverity
+	SnapHekaMsgType                     = SnapDfltHekaMsgType
+	SnapHekaMsgLogger                   = SnapDfltHekaMsgLogger
+	MetricMappings    map[string]string = make(map[string]string)
 )
 
 // SnapHekaClient defines the Heka connection scheme (e.g. tcp)
@@ -33,9 +42,91 @@ type SnapHekaClient struct {
 	hekaHost   string
 }
 
-// NewSnapHekaClient creates a new instance of
-func NewSnapHekaClient(addr string) (shc *SnapHekaClient, err error) {
-	logger.WithField("_block", "NewSnapHekaClient").Info("Enter NewSnapHekaClient")
+type mappings struct {
+	Severity    int32             `json:"severity"yaml:"severity"`
+	MessageType string            `json:"type"yaml:"type"`
+	Logger      string            `json:"logger"yaml:"logger"`
+	Namespace   map[string]string `json:"namespace"yaml:"namespace"`
+	Metrics     map[string]string `json:"metrics"yaml:"metrics"`
+}
+
+var (
+	globalMappings = mappings{}
+)
+
+// HandleMappingsFile
+// TODO protect initialization using mutex
+// for potential race conditions
+func HandleMappingsFile(mfile string) {
+	if len(mfile) == 0 {
+		return
+	}
+	logger.WithField("_block", "HandleMappingsFile").Debug(
+		fmt.Sprintf("HandleMappingsFile checking mappings file %s",
+			mfile))
+	if _, err := os.Stat(mfile); err != nil {
+		logger.WithField("_block", "HandleMappingsFile").Warning(
+			fmt.Sprintf("HandleMappingsFile mappings file %s does not exist (ignoring)",
+				mfile))
+		return
+	}
+	ext := filepath.Ext(mfile)
+	mcontent, e := ioutil.ReadFile(mfile)
+	if e != nil {
+		logger.WithField("_block", "HandleMappingsFile").Warning(
+			fmt.Sprintf("HandleMappingsFile mappings file %s reading error %v (ignoring)",
+				mfile, e))
+		return
+	}
+	logger.WithField("_block", "HandleMappingsFile").Debug(
+		fmt.Sprintf("HandleMappingsFile mappings file %s ext: %s\ncontents: %s",
+			mfile, ext, mcontent))
+	parsed := true
+	switch ext {
+	case ".yaml", ".yml":
+		e = yaml.Unmarshal(mcontent, &globalMappings)
+		if e != nil {
+			logger.WithField("_block", "HandleMappingsFile").Warning(
+				fmt.Sprintf("HandleMappingsFile error parsing YAML mappings file %s: %v",
+					mfile, e))
+			parsed = false
+		}
+	case ".json":
+		e = json.Unmarshal(mcontent, &globalMappings)
+		if e != nil {
+			logger.WithField("_block", "HandleMappingsFile").Warning(
+				fmt.Sprintf("HandleMappingsFile error parsing JSON mappings file %s: %v",
+					mfile, e))
+			parsed = false
+		}
+	default:
+		logger.WithField("_block", "HandleMappingsFile").Warning(
+			fmt.Sprintf("HandleMappingsFile mappings file %s extension not supported: %s (should be one of .json .yaml .yml)",
+				mfile, ext))
+		parsed = false
+	}
+	if parsed {
+		logger.WithField("_block", "HandleMappingsFile").Debug(
+			fmt.Sprintf("HandleMappingsFile mappings file %s\nMappings: %#+v",
+				mfile, globalMappings))
+		if globalMappings.Severity > 0 {
+			SnapHekaSeverity = globalMappings.Severity
+		}
+		if len(globalMappings.MessageType) > 0 {
+			SnapHekaMsgType = globalMappings.MessageType
+		}
+		if len(globalMappings.Logger) > 0 {
+			SnapHekaMsgLogger = globalMappings.Logger
+		}
+	}
+	logger.WithField("_block", "HandleMappingsFile").Info(
+		fmt.Sprintf("Using Severity=%d MessageType=%s Logger=%s",
+			SnapHekaSeverity, SnapHekaMsgType, SnapHekaMsgLogger))
+}
+
+// NewSnapHekaClient creates a new instance of Heka client
+func NewSnapHekaClient(addr string, mfile string) (shc *SnapHekaClient, err error) {
+	logger.WithField("_block", "NewSnapHekaClient").Debug("Enter NewSnapHekaClient")
 
 	shc = &SnapHekaClient{}
 
@@ -46,6 +137,7 @@ func NewSnapHekaClient(addr string) (shc *SnapHekaClient, err error) {
 
 	shc.hekaScheme = hekaURL.Scheme
 	shc.hekaHost = hekaURL.Host
+	HandleMappingsFile(mfile)
 	return shc, nil
 }
 
@@ -86,7 +178,7 @@ func (shc *SnapHekaClient) sendToHeka(metrics []plugin.MetricType) error {
 
 		err = sender.SendMessage(buf)
 		if err != nil {
-			logger.WithField("_block", "sendToHeka").Info("sending message error: ", err)
+			logger.WithField("_block", "sendToHeka").Error("sending message error: ", err)
 		}
 	}
 	sender.Close()
@@ -100,7 +192,7 @@ func createHekaMessage(pl string, m plugin.MetricType, pid int32, hostname strin
 	msg.SetTimestamp(time.Now().UnixNano())
 	msg.SetType(SnapHekaMsgType)
 	msg.SetLogger(SnapHekaMsgLogger)
-	msg.SetSeverity(6)
+	msg.SetSeverity(SnapHekaSeverity)
 	msg.SetPayload(pl)
 	msg.SetPid(pid)
 	msg.SetHostname(hostname)
@@ -138,6 +230,9 @@ func setHekaMessageFields(m plugin.MetricType, msg *message.Message) error {
 	var err error
 	// Loop on namespace elements
 	for _, elt := range m.Namespace() {
+		logger.WithField("_block", "setHekaMessageFields").Debug(
+			fmt.Sprintf("Namespace %#+v",
+				elt))
 		// Dynamic element is not inserted in metric name
 		// but rather added to dimension field
 		if elt.IsDynamic() {
@@ -155,6 +250,9 @@ func setHekaMessageFields(m plugin.MetricType, msg *message.Message) error {
 	// Processing of tags
 	if len(m.Tags()) > 0 {
 		for tag, value := range m.Tags() {
+			logger.WithField("_block", "setHekaMessageFields").Debug(
+				fmt.Sprintf("Adding tag=%s value=%s",
+					tag, value))
 			dimField, err = addToDimensions(dimField, tag)
 			if err != nil {
 				logger.WithField("_block", "setHekaMessageFields").Error(err)
@@ -166,7 +264,56 @@ func setHekaMessageFields(m plugin.MetricType, msg *message.Message) error {
 	if dimField != nil {
 		msg.AddField(dimField)
 	}
-	addField("name", strings.Join(mName, "."), msg)
+	// Handle metric name
+	metricName := strings.Join(mName, ".")
+	// TODO protect access using mutex
+	// for potential race conditions
+	logger.WithField("_block", "setHekaMessageFields").Debug(
+		fmt.Sprintf("Checking metric=%s",
+			metricName))
+	// Is mapping already stored
+	if val, ok := MetricMappings[metricName]; ok {
+		logger.WithField("_block", "setHekaMessageFields").Debug(
+			fmt.Sprintf("Metric=%s in cache %s",
+				metricName, val))
+		metricName = val
+	} else {
+		oldMetricName := metricName
+		logger.WithField("_block", "setHekaMessageFields").Debug(
+			fmt.Sprintf("Metric=%s not in cache",
+				metricName))
+		// Namespace handling
+		for kmapping, vmapping := range globalMappings.Namespace {
+			logger.WithField("_block", "setHekaMessageFields").Debug(
+				fmt.Sprintf("Checking metric=%s against namespace %s (%s)",
+					metricName, kmapping, vmapping))
+			// Try to see if substitution changes something
+			newMetricName := strings.Replace(metricName, kmapping, vmapping, 1)
+			if strings.Compare(newMetricName, metricName) != 0 {
+				MetricMappings[oldMetricName] = newMetricName
+				logger.WithField("_block", "setHekaMessageFields").Debug(
+					fmt.Sprintf("Changing metric=%s into %s",
+						metricName, newMetricName))
+				metricName = newMetricName
+			}
+		}
+		// Metrics handling
+		for kmapping, vmapping := range globalMappings.Metrics {
+			logger.WithField("_block", "setHekaMessageFields").Debug(
+				fmt.Sprintf("Checking metric=%s against metric %s (%s)",
+					metricName, kmapping, vmapping))
+			// Try to see if substitution changes something
+			newMetricName := strings.Replace(metricName, kmapping, vmapping, 1)
+			if strings.Compare(newMetricName, metricName) != 0 {
+				MetricMappings[oldMetricName] = newMetricName
+				logger.WithField("_block", "setHekaMessageFields").Debug(
+					fmt.Sprintf("Changing metric=%s into %s",
+						metricName, newMetricName))
+				metricName = newMetricName
+			}
+		}
+	}
+	addField("name", metricName, msg)
 	addField("value", getData(m.Data()), msg)
 	addField("timestamp", m.Timestamp().UnixNano(), msg)
 	return nil

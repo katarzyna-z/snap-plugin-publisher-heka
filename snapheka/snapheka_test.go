@@ -18,7 +18,7 @@ import (
 func TestHekaPlugin(t *testing.T) {
 	Convey("Meta should return metadata for the plugin", t, func() {
 		meta := Meta()
-		So(meta.Name, ShouldResemble, name)
+		So(meta.Name, ShouldResemble, pluginName)
 		So(meta.Version, ShouldResemble, version)
 		So(meta.Type, ShouldResemble, plugin.PublisherPluginType)
 	})
@@ -42,7 +42,7 @@ func TestHekaPlugin(t *testing.T) {
 			testConfig := make(map[string]ctypes.ConfigValue)
 			testConfig["host"] = ctypes.ConfigValueStr{Value: "localhost"}
 			testConfig["port"] = ctypes.ConfigValueInt{Value: 6565}
-			cfg, errs := configPolicy.Get([]string{""}).Process(testConfig)
+			cfg, errs := configPolicy.Get([]string{vendor, pluginName}).Process(testConfig)
 			Convey("So config policy should process testConfig and return a config", func() {
 				So(cfg, ShouldNotBeNil)
 			})
@@ -50,7 +50,7 @@ func TestHekaPlugin(t *testing.T) {
 				So(errs.HasErrors(), ShouldBeFalse)
 			})
 			testConfig["port"] = ctypes.ConfigValueStr{Value: "6565"}
-			cfg, errs = configPolicy.Get([]string{""}).Process(testConfig)
+			cfg, errs = configPolicy.Get([]string{vendor, pluginName}).Process(testConfig)
 			Convey("So config policy should not return a config after processing invalid testConfig", func() {
 				So(cfg, ShouldBeNil)
 			})
@@ -62,7 +62,7 @@ func TestHekaPlugin(t *testing.T) {
 
 	Convey("Create SnapHekaClient", t, func() {
 		Convey("The SnapHekaClient should not be nil", func() {
-			client, _ := NewSnapHekaClient("tcp://localhost:5600")
+			client, _ := NewSnapHekaClient("tcp://localhost:5600", "")
 			So(client, ShouldNotBeNil)
 		})
 		Convey("Testing createHekaMessage", func() {

@@ -34,14 +34,16 @@ import (
 )
 
 const (
-	name       = "heka"
-	version    = 2
+	//vendor namespace part
+	vendor     = "intel"
+	pluginName = "heka"
+	version    = 3
 	pluginType = plugin.PublisherPluginType
 )
 
 // Meta returns a plugin meta data
 func Meta() *plugin.PluginMeta {
-	return plugin.NewPluginMeta(name, version, pluginType, []string{plugin.SnapGOBContentType}, []string{plugin.SnapGOBContentType})
+	return plugin.NewPluginMeta(pluginName, version, pluginType, []string{plugin.SnapGOBContentType}, []string{plugin.SnapGOBContentType})
 }
 
 //NewHekaPublisher returns an instance of the Heka publisher
@@ -67,7 +69,12 @@ func (p *hekaPublisher) GetConfigPolicy() (*cpolicy.ConfigPolicy, error) {
 	r2.Description = "Heka port"
 	config.Add(r2)
 
-	cp.Add([]string{""}, config)
+	r3, err := cpolicy.NewStringRule("mappings-file", false)
+	handleErr(err)
+	r3.Description = "Heka plugin mappings JSON/XML file"
+	config.Add(r3)
+
+	cp.Add([]string{vendor, pluginName}, config)
 	return cp, nil
 }
 
@@ -96,9 +103,13 @@ func (p *hekaPublisher) Publish(contentType string, content []byte, config map[s
 
 	u, err := url.Parse(fmt.Sprintf("%s:%d", config["host"].(ctypes.ConfigValueStr).Value, config["port"].(ctypes.ConfigValueInt).Value))
 	handleErr(err)
+	mappingsFile := ""
+	if mFile, ok := config["mappings-file"]; ok {
+		mappingsFile = mFile.(ctypes.ConfigValueStr).Value
+	}
 
 	// Publish metric data to Heka through TCP
-	shc, _ := NewSnapHekaClient(fmt.Sprintf("tcp://%s", u))
+	shc, _ := NewSnapHekaClient(fmt.Sprintf("tcp://%s", u), mappingsFile)
 	err = shc.sendToHeka(metrics)
 	handleErr(err)
 
