@@ -43,7 +43,15 @@ const (
 
 // Meta returns a plugin meta data
 func Meta() *plugin.PluginMeta {
-	return plugin.NewPluginMeta(pluginName, version, pluginType, []string{plugin.SnapGOBContentType}, []string{plugin.SnapGOBContentType})
+	return plugin.NewPluginMeta(
+		pluginName,
+		version,
+		pluginType,
+		[]string{plugin.SnapGOBContentType},
+		[]string{plugin.SnapGOBContentType},
+		plugin.RoutingStrategy(plugin.StickyRouting),
+		plugin.ConcurrencyCount(1),
+	)
 }
 
 //NewHekaPublisher returns an instance of the Heka publisher
