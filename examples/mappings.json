@@ -1,0 +1,13 @@
+{
+    "severity": 6,
+    "type": "metric",
+    "logger": "test.logger",
+    "namespace": {
+        "intel.mock" : "stacklight.test",
+        "dummynamespace" : "propernamespace"
+    },
+    "metrics": {
+        "baz" : "sl-baz",
+        "dummymetric" : "propermetric"
+    }
+}
