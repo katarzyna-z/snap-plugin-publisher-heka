@@ -1,0 +1,15 @@
+.travis.yml:
+   unmanaged: true
+Makefile:
+   unmanaged: true
+scripts/build.sh:
+   unmanaged: true
+scripts/common.sh:
+   unmanaged: true
+scripts/deps.sh:
+  unmanaged: true
+scripts/pre_deploy.sh:
+  unmanaged: true
+scripts/test.sh:
+  unmanaged: true
+
