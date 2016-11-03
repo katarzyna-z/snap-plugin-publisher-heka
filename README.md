@@ -17,7 +17,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# snap heka publisher plugin 
+# snap heka publisher plugin
+
 This plugin publishes snap metric data into heka via TCP.
 
 It's used in the [snap framework](http://github.com/intelsdi-x/snap).
