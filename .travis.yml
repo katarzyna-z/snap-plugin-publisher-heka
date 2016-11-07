@@ -20,6 +20,8 @@ env:
   matrix:
   - TEST_TYPE=small
   - TEST_TYPE=build
+  - TEST=unit
+  - TEST=integration
 matrix:
   exclude:
   - go: 1.6.3
