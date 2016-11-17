@@ -17,15 +17,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 -->
 
-# snap heka publisher plugin 
-This plugin publishes snap metric data into heka via TCP.
+# Snap heka publisher plugin
+This plugin publishes snap metric data into Heka via TCP.
 
 It's used in the [snap framework](http://github.com/intelsdi-x/snap).
 
 1. [Getting Started](#getting-started)
   * [System Requirements](#system-requirements)
   * [Building from source](#building-from-source)
-  * [Configuration and Usage](configuration-and-usage)
+  * [Configuration and Usage](#configuration-and-usage)
 2. [Documentation](#documentation)
   * [Collected Metrics](#collected-metrics)
   * [Examples](#examples)
@@ -37,9 +37,9 @@ It's used in the [snap framework](http://github.com/intelsdi-x/snap).
 
 ## Getting Started
 ### System Requirements
-* [snap] (https://github.com/intelsdi-x/snap)
+* [Snap](https://github.com/intelsdi-x/snap)
 * [heka](https://github.com/mozilla-services/heka/)
-* [golang 1.5+](https://golang.org/dl/)
+* [golang 1.6+](https://golang.org/dl/)
 
 ### Operating systems
 All OSs currently supported by snap:
@@ -51,12 +51,10 @@ All OSs currently supported by snap:
 ```go get github.com/intelsdi-x/snap-plugin-publisher-heka```
 * Build the snap-plugin-publisher-heka plugin
  *  From the root of the snap-plugin-publisher-heka path type ```make all```.
-   * This builds the plugin in `/build/rootfs/`.
+   * This builds the plugin in `./build`.
 
 ### Configuration and Usage
-* Set up the [snap framework](https://github.com/intelsdi-x/snap/blob/master/README.md#getting-started)
-* Ensure `$SNAP_PATH` is exported
-`export SNAP_PATH=$GOPATH/src/github.com/intelsdi-x/snap/build`
+* Set up the [Snap framework](https://github.com/intelsdi-x/snap/blob/master/README.md#getting-started)
 * Make sure the Docker is ready on your machine before you run integration tests.
  * cd snap-plugin-publisher-heka
   * make test-unit 
@@ -67,9 +65,11 @@ All OSs currently supported by snap:
 ### Suitable Metrics
 All metrics that is complaint with snap metric type definition.
 
-
 ### Examples
-Assuming that, you have a heka instance running with the appropriate configuration. For example:
+
+Example of running [psutil collector plugin](https://github.com/intelsdi-x/snap-plugin-collector-psutil) and publishing data to Heka.
+
+Assuming that, you have a Heka instance running with the appropriate configuration. For example:
 ``` 
 $ sudo hekad -config=tcp-input-multioutputs.toml
 2016/01/13 14:09:06 Pre-loading: [RstEncoder]
@@ -113,70 +113,75 @@ $ docker run --name heka -it -p 4352:4352 -p 3242:3242 -v <path to heka-tcp-conf
 Where port 4352 is the Heka dashboard port and 3242 is a sample TCP input port.
 
 
-In one terminal window, start the snap daemon (in this case with logging set to 1 and trust disabled):
+Set up the [Snap framework](https://github.com/intelsdi-x/snap/blob/master/README.md#getting-started)
+
+Ensure [Snap daemon is running](https://github.com/intelsdi-x/snap#running-snap):
+* initd: `service snap-telemetry start`
+* systemd: `systemctl start snap-telemetry`
+* command line: `sudo snapd -l 1 -t 0 &`
+
+Download and load snap-plugin-collector-psutil plugin (path to binary file for Linux/amd64):
 ```
-$ $SNAP_PATH/bin/snapd -l 1 -t 0
+$ wget http://snap.ci.snap-telemetry.io/plugins/snap-plugin-collector-psutil/latest/linux/x86_64/snap-plugin-collector-psutil
+$ snapctl plugin load snap-plugin-collector-psutil
 ```
 
-In another terminal window:
-Load snap collector plugins. For example:
-```
-$ $SNAP_PATH/bin/snapctl plugin load $SNAP_PSUTIL_PLUGIN/build/rootfs/snap-plugin-collector-psutil
-```
-Load snap heka publisher plugin
-```
-$ $SNAP_PATH/bin/snapctl plugin load <path to built snap-plugin-publisher-heka plugin>
-```
-Create tasks. For example:
-```
-$ $SNAP_PATH/bin/snapctl task create -t /tmp/heka-task.json
-Using task manifest to create task
-Task created
-ID: 69f71b95-7d32-418d-b81a-60fcc9ef2798
-Name: Task-69f71b95-7d32-418d-b81a-60fcc9ef2798
-State: Running
+Build heka according to the [instruction](#building-from-source) and go to directory with plugin binary file.
 
+Load Heka publisher plugin:
 ```
-The example task manifest file, heka-task.json:
-```json
+snapctl plugin load snap-plugin-publisher-heka
+```
+
+Create a [task manifest](https://github.com/intelsdi-x/snap/blob/master/docs/TASKS.md) (see [exemplary tasks](examples/)),
+for example `psutil-heka.json` with following content:
+```
 {
-    "version": 1,
-    "schedule": {
-        "type": "simple",
-        "interval": "1s"
-    },
-    "workflow": {
-        "collect": {
-            "metrics": {
-                "/intel/psutil/load/load1": {},
-                "/intel/psutil/load/load5": {},
-                "/intel/psutil/load/load15": {},
-                "/intel/psutil/vm/available": {},
-                "/intel/psutil/vm/free": {},
-                "/intel/psutil/vm/used": {}
-            },
-            "config": {
-                "/intel/mock": {
-                    "password": "secret",
-                    "user": "root"
-                }
-            },
-            "process": null,
-            "publish": [
-                {
-                    "plugin_name": "heka",                            
-                    "config": {
-                        "host": "HEKA_HOST_IP",
-                        "port": "TCP_PORT"
-                    }
-                }
-            ]                                            
+  "version": 1,
+  "schedule": {
+    "type": "simple",
+    "interval": "1s"
+  },
+  "workflow": {
+    "collect": {
+      "metrics": {
+        "/intel/psutil/load/load1": {},
+        "/intel/psutil/load/load5": {},
+        "/intel/psutil/load/load15": {},
+        "/intel/psutil/vm/available": {},
+        "/intel/psutil/vm/free": {},
+        "/intel/psutil/vm/used": {}
+      },
+      "publish": [
+        {
+          "plugin_name": "heka",
+          "config": {
+            "host": "127.0.0.1",
+            "port":  5565
+          }
         }
+      ]
     }
+  }
 }
 ```
 
-Sample snap heka file output message:
+Create a task:
+```
+$ snapctl task create -t psutil-heka.json
+```
+
+Watch created task:
+```
+$ snapctl task watch <task_id>
+```
+
+To stop previously created task:
+```
+$ snapctl task stop <task_id>
+```
+
+Sample Snap Heka file output message:
 ```
 :Timestamp: 2016-01-13 22:10:41.441442012 +0000 UTC
 :Type: snap.heka
@@ -194,7 +199,7 @@ Sample snap heka file output message:
     | name:"timestamp" type:integer value:1452723041439225319
 ```
 
-Sample snap heka elasticsearch message:
+Sample Snap Heka elasticsearch message:
 ```json
 {
 "_index": "intel-snap-2016.01.13",
@@ -221,7 +226,7 @@ Sample snap heka elasticsearch message:
 }
 ```
 
-Sample snap heka influxdb data:
+Sample Snap Heka influxdb data:
 ```
 > select * from namespavce
 1452720018000000000	egu-mac01.lan	snap.heka.logger	6		snap.heka	intel.psutil.load.load1
@@ -255,7 +260,7 @@ Sample snap heka influxdb data:
 There isn't a current roadmap for this plugin, but it is in active development. As we launch this plugin, we do not have any outstanding requirements for the next release. If you have a feature request, please add it as an [issue](https://github.com/intelsdi-x/snap-plugin-collector-etcd/issues/new) and/or submit a [pull request](https://github.com/intelsdi-x/snap-plugin-collector-etcd/pulls).
 
 ## Community Support
-This repository is one of **many** plugins in **snap**, a powerful telemetry framework. See the full project at http://github.com/intelsdi-x/snap.
+This repository is one of **many** plugins in **Snap**, a powerful telemetry framework. See the full project at http://github.com/intelsdi-x/snap.
 
 To reach out to other users, head to the [main framework](https://github.com/intelsdi-x/snap#community-support).
 
@@ -265,7 +270,7 @@ We love contributions!
 There's more than one way to give back, from examples to blogs to code updates. See our recommended process in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
-[snap](http://github.com:intelsdi-x/snap), along with this plugin, is an Open Source software released under the Apache 2.0 [License](LICENSE).
+[Snap](http://github.com:intelsdi-x/snap), along with this plugin, is an Open Source software released under the Apache 2.0 [License](LICENSE).
 
 ## Acknowledgements
 * Author: [@candysmurf](https://github.com/candysmurf)
