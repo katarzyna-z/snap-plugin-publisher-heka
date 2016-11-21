@@ -118,19 +118,19 @@ Set up the [Snap framework](https://github.com/intelsdi-x/snap/blob/master/READM
 Ensure [Snap daemon is running](https://github.com/intelsdi-x/snap#running-snap):
 * initd: `service snap-telemetry start`
 * systemd: `systemctl start snap-telemetry`
-* command line: `sudo snapd -l 1 -t 0 &`
+* command line: `sudo snapteld -l 1 -t 0 &`
 
 Download and load snap-plugin-collector-psutil plugin (path to binary file for Linux/amd64):
 ```
 $ wget http://snap.ci.snap-telemetry.io/plugins/snap-plugin-collector-psutil/latest/linux/x86_64/snap-plugin-collector-psutil
-$ snapctl plugin load snap-plugin-collector-psutil
+$ snaptel plugin load snap-plugin-collector-psutil
 ```
 
 Build heka according to the [instruction](#building-from-source) and go to directory with plugin binary file.
 
 Load Heka publisher plugin:
 ```
-snapctl plugin load snap-plugin-publisher-heka
+$ snaptel plugin load snap-plugin-publisher-heka
 ```
 
 Create a [task manifest](https://github.com/intelsdi-x/snap/blob/master/docs/TASKS.md) (see [exemplary tasks](examples/)),
@@ -168,17 +168,17 @@ for example `psutil-heka.json` with following content:
 
 Create a task:
 ```
-$ snapctl task create -t psutil-heka.json
+$ snaptel task create -t psutil-heka.json
 ```
 
 Watch created task:
 ```
-$ snapctl task watch <task_id>
+$ snaptel task watch <task_id>
 ```
 
 To stop previously created task:
 ```
-$ snapctl task stop <task_id>
+$ snaptel task stop <task_id>
 ```
 
 Sample Snap Heka file output message:
